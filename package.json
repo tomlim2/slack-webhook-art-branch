@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:deploy": "supabase functions deploy weekly-notifications",
+    "supabase:deploy": "supabase functions deploy send-notifications --no-verify-jwt",
+    "supabase:serve": "supabase functions serve send-notifications --no-verify-jwt",
     "check-notifications": "node scripts/check-notifications.js"
   },
   "dependencies": {

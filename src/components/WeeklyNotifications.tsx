@@ -117,22 +117,20 @@ export const WeeklyNotifications: React.FC<WeeklyNotificationsProps> = ({
       {weeklyNotification.enabled && (
         <div style={{ 
           padding: '10px', 
-          backgroundColor: '#fff3cd', 
-          border: '1px solid #ffeaa7', 
+          backgroundColor: '#f0f8ff', 
+          border: '1px solid #ddd', 
           borderRadius: '4px',
           marginTop: '10px'
         }}>
-          <strong>⚠️ Important:</strong>
+          <strong>Active Weekly Notification:</strong>
           <br />
-          <span style={{ color: '#856404' }}>
-            Weekly notifications only work when this browser tab is open. 
-            For reliable notifications, consider setting up a server-side solution.
-          </span>
+          <span style={{ color: 'green' }}>● </span>
+          {weeklyNotification.day.charAt(0).toUpperCase() + weeklyNotification.day.slice(1)} at {weeklyNotification.time}
           <br />
           <small style={{ color: '#666' }}>
-            Current schedule: {weeklyNotification.day.charAt(0).toUpperCase() + weeklyNotification.day.slice(1)} at {weeklyNotification.time}
-            <br />
-            Next check: Every minute when browser is open
+            {weeklyNotification.message.length > 50 
+              ? `${weeklyNotification.message.substring(0, 50)}...` 
+              : weeklyNotification.message}
           </small>
         </div>
       )}
