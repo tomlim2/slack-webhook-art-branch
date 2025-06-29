@@ -8,11 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:deploy": "supabase functions deploy send-notifications --no-verify-jwt",
-    "supabase:serve": "supabase functions serve send-notifications --no-verify-jwt",
-    "check-notifications": "node scripts/check-notifications.js"
+    "check-notifications": "node --experimental-modules scripts/check-notifications.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.2",

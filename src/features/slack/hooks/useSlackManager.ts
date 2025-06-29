@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { SlackService } from '../../../services/slackService';
 import { useWeeklyNotification } from '../../../hooks/useWeeklyNotification';
 import { useLocalStorage } from '../../../hooks/useLocalStorage';
-import { useSupabaseWeeklyNotifications } from './useSupabaseWeeklyNotifications';
+import type { WeeklyNotification } from '../../../types';
 
 const STORAGE_KEYS = {
   WEBHOOK_URL: 'slack-webhook-url',
@@ -15,28 +15,12 @@ export const useSlackManager = () => {
     import.meta.env.VITE_SLACK_TEST_WEBHOOK_URL || ''
   );
   const [message, setMessage] = useState('');
+  const [weeklyNotification, setWeeklyNotification] = useLocalStorage(
+    STORAGE_KEYS.WEEKLY_NOTIFICATION,
+    { message: '', day: 'monday', time: '09:00', enabled: false }
+  );
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Use Supabase hook for weekly notifications
-  const {
-    weeklyNotification,
-    weeklyNotificationId,
-    notifications,
-    isLoading: isSupabaseLoading,
-    error: supabaseError,
-    userId,
-    updateWeeklyNotification,
-    saveWeeklyNotification,
-    loadWeeklyNotification,
-    deleteWeeklyNotification,
-    loadAllNotifications,
-    loadNotificationById,
-    createNotification,
-    updateNotificationById,
-    deleteNotificationById,
-    toggleNotificationById
-  } = useSupabaseWeeklyNotifications();
 
   // Use local weekly notification hook for scheduling
   useWeeklyNotification(webhookUrl, weeklyNotification, setStatus);
@@ -66,56 +50,21 @@ export const useSlackManager = () => {
   }, [webhookUrl, message]);
 
   // Toggle weekly notifications
-  const handleToggleWeekly = useCallback(async () => {
+  const handleToggleWeekly = useCallback(() => {
     if (!webhookUrl || !weeklyNotification.message.trim()) {
       setStatus('Error: Please fill in webhook URL and weekly message');
       return;
     }
 
     const newEnabled = !weeklyNotification.enabled;
-    updateWeeklyNotification({ enabled: newEnabled });
-    
-    // Save to database
-    const success = await saveWeeklyNotification();
-    
-    if (success) {
-      setStatus(newEnabled ? 'Weekly notifications enabled' : 'Weekly notifications disabled');
-    } else {
-      setStatus('Error saving weekly notification settings');
-    }
-  }, [webhookUrl, weeklyNotification.message, weeklyNotification.enabled, updateWeeklyNotification, saveWeeklyNotification]);
+    setWeeklyNotification(prev => ({ ...prev, enabled: newEnabled }));
+    setStatus(newEnabled ? 'Weekly notifications enabled (browser must stay open)' : 'Weekly notifications disabled');
+  }, [webhookUrl, weeklyNotification, setWeeklyNotification]);
 
-  // Save weekly notification changes
-  const handleSaveWeeklyNotification = useCallback(async () => {
-    console.log('handleSaveWeeklyNotification called');
-    
-    if (!weeklyNotification.message.trim()) {
-      setStatus('Error: Please enter a message before saving');
-      return;
-    }
-
-    setStatus('Saving notification...');
-    const success = await saveWeeklyNotification();
-    
-    if (success) {
-      setStatus('Weekly notification saved successfully');
-    } else {
-      setStatus(supabaseError || 'Error saving weekly notification');
-    }
-  }, [saveWeeklyNotification, weeklyNotification.message, supabaseError]);
-
-  // Delete weekly notification
-  const handleDeleteWeeklyNotification = useCallback(async () => {
-    const success = await deleteWeeklyNotification();
-    setStatus(success ? 'Weekly notification deleted' : 'Error deleting weekly notification');
-  }, [deleteWeeklyNotification]);
-
-  // Update status when Supabase error changes
-  useCallback(() => {
-    if (supabaseError) {
-      setStatus(supabaseError);
-    }
-  }, [supabaseError]);
+  // Update weekly notification
+  const updateWeeklyNotification = useCallback((updates: Partial<WeeklyNotification>) => {
+    setWeeklyNotification(prev => ({ ...prev, ...updates }));
+  }, [setWeeklyNotification]);
 
   // Preset webhooks
   const presetWebhooks = {
@@ -128,12 +77,9 @@ export const useSlackManager = () => {
     webhookUrl,
     message,
     weeklyNotification,
-    notifications,
     status,
     presetWebhooks,
-    isLoading: isLoading || isSupabaseLoading,
-    weeklyNotificationId,
-    userId,
+    isLoading,
     
     // Setters
     setWebhookUrl,
@@ -142,16 +88,6 @@ export const useSlackManager = () => {
     // Actions
     updateWeeklyNotification,
     handleSendMessage,
-    handleToggleWeekly,
-    handleSaveWeeklyNotification,
-    handleDeleteWeeklyNotification,
-    loadWeeklyNotification,
-    // New notification management functions
-    loadAllNotifications,
-    loadNotificationById,
-    createNotification,
-    updateNotificationById,
-    deleteNotificationById,
-    toggleNotificationById
+    handleToggleWeekly
   };
 };
