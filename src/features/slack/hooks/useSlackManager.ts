@@ -1,15 +1,8 @@
 import { useState, useCallback } from 'react';
-import type { WeeklyNotification } from '../../../types';
 import { SlackService } from '../../../services/slackService';
 import { useWeeklyNotification } from '../../../hooks/useWeeklyNotification';
 import { useLocalStorage } from '../../../hooks/useLocalStorage';
-
-const INITIAL_WEEKLY_NOTIFICATION: WeeklyNotification = {
-  message: '',
-  day: 'monday',
-  time: '09:00',
-  enabled: false
-};
+import { useSupabaseWeeklyNotifications } from './useSupabaseWeeklyNotifications';
 
 const STORAGE_KEYS = {
   WEBHOOK_URL: 'slack-webhook-url',
@@ -22,31 +15,58 @@ export const useSlackManager = () => {
     import.meta.env.VITE_SLACK_TEST_WEBHOOK_URL || ''
   );
   const [message, setMessage] = useState('');
-  const [weeklyNotification, setWeeklyNotification] = useLocalStorage<WeeklyNotification>(
-    STORAGE_KEYS.WEEKLY_NOTIFICATION, 
-    INITIAL_WEEKLY_NOTIFICATION
-  );
   const [status, setStatus] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Use Supabase hook for weekly notifications
+  const {
+    weeklyNotification,
+    weeklyNotificationId,
+    notifications,
+    isLoading: isSupabaseLoading,
+    error: supabaseError,
+    userId,
+    updateWeeklyNotification,
+    saveWeeklyNotification,
+    loadWeeklyNotification,
+    deleteWeeklyNotification,
+    loadAllNotifications,
+    loadNotificationById,
+    createNotification,
+    updateNotificationById,
+    deleteNotificationById,
+    toggleNotificationById
+  } = useSupabaseWeeklyNotifications();
+
+  // Use local weekly notification hook for scheduling
   useWeeklyNotification(webhookUrl, weeklyNotification, setStatus);
 
-  // Weekly notification handlers
-  const updateWeeklyNotification = useCallback((updates: Partial<WeeklyNotification>) => {
-    setWeeklyNotification(prev => ({ ...prev, ...updates }));
-  }, [setWeeklyNotification]);
-
-  // Message handlers
+  // Send message handler
   const handleSendMessage = useCallback(async () => {
+    if (!webhookUrl.trim()) {
+      setStatus('Error: Please enter a webhook URL');
+      return;
+    }
+
+    if (!message.trim()) {
+      setStatus('Error: Please enter a message');
+      return;
+    }
+
+    setIsLoading(true);
     try {
       await SlackService.sendMessage({ webhookUrl }, message);
       setStatus('Message sent successfully!');
       setMessage('');
     } catch (error) {
       setStatus(`Error: ${error}`);
+    } finally {
+      setIsLoading(false);
     }
   }, [webhookUrl, message]);
 
-  const handleToggleWeekly = useCallback(() => {
+  // Toggle weekly notifications
+  const handleToggleWeekly = useCallback(async () => {
     if (!webhookUrl || !weeklyNotification.message.trim()) {
       setStatus('Error: Please fill in webhook URL and weekly message');
       return;
@@ -54,8 +74,48 @@ export const useSlackManager = () => {
 
     const newEnabled = !weeklyNotification.enabled;
     updateWeeklyNotification({ enabled: newEnabled });
-    setStatus(newEnabled ? 'Weekly notifications enabled' : 'Weekly notifications disabled');
-  }, [webhookUrl, weeklyNotification.message, weeklyNotification.enabled, updateWeeklyNotification]);
+    
+    // Save to database
+    const success = await saveWeeklyNotification();
+    
+    if (success) {
+      setStatus(newEnabled ? 'Weekly notifications enabled' : 'Weekly notifications disabled');
+    } else {
+      setStatus('Error saving weekly notification settings');
+    }
+  }, [webhookUrl, weeklyNotification.message, weeklyNotification.enabled, updateWeeklyNotification, saveWeeklyNotification]);
+
+  // Save weekly notification changes
+  const handleSaveWeeklyNotification = useCallback(async () => {
+    console.log('handleSaveWeeklyNotification called');
+    
+    if (!weeklyNotification.message.trim()) {
+      setStatus('Error: Please enter a message before saving');
+      return;
+    }
+
+    setStatus('Saving notification...');
+    const success = await saveWeeklyNotification();
+    
+    if (success) {
+      setStatus('Weekly notification saved successfully');
+    } else {
+      setStatus(supabaseError || 'Error saving weekly notification');
+    }
+  }, [saveWeeklyNotification, weeklyNotification.message, supabaseError]);
+
+  // Delete weekly notification
+  const handleDeleteWeeklyNotification = useCallback(async () => {
+    const success = await deleteWeeklyNotification();
+    setStatus(success ? 'Weekly notification deleted' : 'Error deleting weekly notification');
+  }, [deleteWeeklyNotification]);
+
+  // Update status when Supabase error changes
+  useCallback(() => {
+    if (supabaseError) {
+      setStatus(supabaseError);
+    }
+  }, [supabaseError]);
 
   // Preset webhooks
   const presetWebhooks = {
@@ -68,8 +128,12 @@ export const useSlackManager = () => {
     webhookUrl,
     message,
     weeklyNotification,
+    notifications,
     status,
     presetWebhooks,
+    isLoading: isLoading || isSupabaseLoading,
+    weeklyNotificationId,
+    userId,
     
     // Setters
     setWebhookUrl,
@@ -78,6 +142,16 @@ export const useSlackManager = () => {
     // Actions
     updateWeeklyNotification,
     handleSendMessage,
-    handleToggleWeekly
+    handleToggleWeekly,
+    handleSaveWeeklyNotification,
+    handleDeleteWeeklyNotification,
+    loadWeeklyNotification,
+    // New notification management functions
+    loadAllNotifications,
+    loadNotificationById,
+    createNotification,
+    updateNotificationById,
+    deleteNotificationById,
+    toggleNotificationById
   };
 };

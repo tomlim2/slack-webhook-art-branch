@@ -7,11 +7,17 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:deploy": "supabase functions deploy weekly-notifications",
+    "check-notifications": "node scripts/check-notifications.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.50.2",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
